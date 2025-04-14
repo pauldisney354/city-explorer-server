@@ -1,27 +1,62 @@
+'use strict';
+
+// Load Environment Variables from the .env file
 require('dotenv').config();
+
+// Application Dependencies
 const express = require('express');
 const cors = require('cors');
 
+// Our Dependencies
+const weather = require('./modules/weather.js');//step 2, make a constant for api
+const yelp = require('./modules/yelp.js');
+const movies = require('./modules/movies.js');
+
+// Application Setup
+const PORT = process.env.PORT;
 const app = express();
 app.use(cors());
 
-const PORT = process.env.PORT || 3001;
+// Route Definitions
+app.get('/weather', weatherHandler);
+app.get('/yelp', yelpHandler);
+app.get('/movies', moviesHandler);
 
-// Import routes
-const locationRoute = require('./routes/location');
-const weatherRoute = require('./routes/weather');
-// const moviesRoute = require('./routes/movies');
+app.use('*', notFoundHandler);
 
-// Define API routes
-app.use('/location', locationRoute);
-app.use('/weather', weatherRoute);
-// app.use('/movies', moviesRoute);
+function weatherHandler(request, response) {
+  const { lat, lon } = request.query;
+  console.log('in weather', lat, lon);
+  weather(lat, lon)
+    .then(summaries => response.send(summaries))
+    .catch((error) => {
+      console.error(error);
+      response.status(500).send('Sorry. Something went wrong!');
+    });
+}
 
-// // Error handling middleware
-// const errorHandler = require('./middleware/errorHandler');
-// app.use(errorHandler);
+function moviesHandler(request, response) {
+  const location = request.query.city;
+  movies(location)
+    .then(moviesList => response.send(moviesList))
+    .catch((error) => {
+      console.error(error);
+      response.status(500).send('Sorry. Something went wrong!');
+    });
+}
 
-// Start the server
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+function yelpHandler(request, response) {
+  const location = request.query.searchQuery;
+  yelp(location, request.query.page)
+    .then(reviews => response.send(reviews))
+    .catch((error) => {
+      console.error(error);
+      response.status(500).send('Sorry. Something went wrong!');
+    });
+}
+
+function notFoundHandler(request, response) {
+  response.status(404).send('huh?');
+}
+
+app.listen(PORT, () => console.log(`Server up on ${PORT}`));
